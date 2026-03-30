@@ -1,564 +1,298 @@
---[[
-    ███╗   ██╗██╗ ██████╗ ██╗  ██╗████████╗███████╗ █████╗ ██╗     ██╗
-    ████╗  ██║██║██╔════╝ ██║  ██║╚══██╔══╝██╔════╝██╔══██╗██║     ██║
-    ██╔██╗ ██║██║██║  ███╗███████║   ██║   █████╗  ███████║██║     ██║
-    ██║╚██╗██║██║██║   ██║██╔══██║   ██║   ██╔══╝  ██╔══██║██║     ██║
-    ██║ ╚████║██║╚██████╔╝██║  ██║   ██║   ██║     ██║  ██║███████╗███████╗
-    ╚═╝  ╚═══╝╚═╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝
+-- CORINGA HUB - by Joao
+-- Biblioteca: Rayfield UI (https://sirius.menu/rayfield)
+-- Compativel com: Delta (Mobile), Synapse X, Fluxus, Solara
+-- Mobile & PC Compatible
 
-    NightFall Script v5.0 — PROFESSIONAL EDITION
-    Compatible: Synapse X, Delta, Solara, Fluxus, Arceus X, Hydrogen, AWP
-    Features: ESP Aura RGB | Silent Aim | Aimbot | SpinBot | Fly | Speed
-]]
+getgenv().CORINGA = getgenv().CORINGA or {}
+local G = getgenv().CORINGA
 
--- ══════════════════════════════════════════════════════
---                  CONFIGURAÇÃO
--- ══════════════════════════════════════════════════════
--- Substitua pela URL do seu servidor (ex: https://meusite.replit.app)
-local SERVER_URL = "https://SEU_SERVIDOR_AQUI"
+G.AimBot=false; G.SilentAim=false; G.AimLock=false
+G.AimSmooth=0.3; G.AimFOV=120; G.AimPart="Head"; G.Prediction=false
+G.FOVCircle=false; G.FOVRadius=120; G.FOVColor=Color3.fromRGB(255,0,0)
+G.AimKill=false; G.TriggerBot=false; G.KillAura=false; G.KillAuraRad=20
+G.BoxESP=false; G.NameESP=false; G.HealthBar=false; G.HealthText=false
+G.DistESP=false; G.Tracers=false; G.HeadDot=false; G.TeamCheck=false
+G.ESPThick=1; G.ESPTransp=1; G.ESPTextSize=13
+G.ESPEnemyColor=Color3.fromRGB(255,0,0); G.ESPTeamColor=Color3.fromRGB(0,255,0)
+G.SpinBot=false; G.SpinSpeed=10; G.Fly=false; G.FlySpeed=50
+G.SpeedHack=false; G.SpeedMult=1; G.InfJump=false; G.NoClip=false
+G.WalkSpeed=16; G.JumpPower=50
+G.GodMode=false; G.AntiAFK=false; G.AntiKick=true; G.AntiBan=true
+G.FakeLag=false; G.AutoFarm=false; G.RemoveFog=false; G.Fullbright=false
+G.FPSCounter=false
 
--- ══════════════════════════════════════════════════════
---               PROTEÇÃO ANTI-EXECUÇÃO DUPLA
--- ══════════════════════════════════════════════════════
-local ENV_KEY = "__NightFall_v5__"
-if rawget(_G, ENV_KEY) then return end
-rawset(_G, ENV_KEY, true)
-pcall(function()
-    if getgenv then
-        if getgenv()[ENV_KEY] then return end
-        getgenv()[ENV_KEY] = true
-    end
-end)
+local Players=game:GetService("Players")
+local RunService=game:GetService("RunService")
+local UserInputService=game:GetService("UserInputService")
+local Lighting=game:GetService("Lighting")
+local TeleportService=game:GetService("TeleportService")
+local VirtualUser=game:GetService("VirtualUser")
+local Camera=workspace.CurrentCamera
+local LocalPlayer=Players.LocalPlayer
 
--- ══════════════════════════════════════════════════════
---               IDENTITY / PROTEÇÃO
--- ══════════════════════════════════════════════════════
-pcall(function() setidentity(8) end)
-pcall(function() if syn then syn.set_thread_identity(8) end end)
-pcall(function() if identifyexecutor then identifyexecutor() end end)
-
--- ══════════════════════════════════════════════════════
---               FUNÇÃO HTTP UNIVERSAL
---  Compatível com: request, syn.request, http.request,
---  fluxus_request, KRNL_Loaded, Arceus X, Delta, etc.
--- ══════════════════════════════════════════════════════
-local function httpGet(url)
-    local httpFunc = request or
-        (syn and syn.request) or
-        (http and http.request) or
-        (fluxus and fluxus.request) or
-        (KRNL_Loaded and http_request) or
-        http_request or
-        (function(cfg)
-            -- Último recurso: HttpService (só funciona em alguns executores)
-            local hs = game:GetService("HttpService")
-            return { Body = hs:GetAsync(cfg.Url), StatusCode = 200 }
-        end)
-    local ok, result = pcall(httpFunc, {
-        Url = url,
-        Method = "GET",
-    })
-    if ok and result then return result.Body end
-    return nil
-end
-
-local function httpPost(url, body)
-    local hs = game:GetService("HttpService")
-    local encoded = hs:JSONEncode(body)
-    local httpFunc = request or
-        (syn and syn.request) or
-        (http and http.request) or
-        (fluxus and fluxus.request) or
-        http_request or
-        nil
-    if not httpFunc then return nil end
-    local ok, result = pcall(httpFunc, {
-        Url = url,
-        Method = "POST",
-        Headers = { ["Content-Type"] = "application/json" },
-        Body = encoded,
-    })
-    if not ok or not result then return nil end
-    local okJ, parsed = pcall(function() return hs:JSONDecode(result.Body) end)
-    if okJ then return parsed end
-    return nil
-end
-
--- ══════════════════════════════════════════════════════
---               SERVIÇOS ROBLOX
--- ══════════════════════════════════════════════════════
-local Players          = game:GetService("Players")
-local RunService       = game:GetService("RunService")
-local UIS              = game:GetService("UserInputService")
-local HttpService      = game:GetService("HttpService")
-local Camera           = workspace.CurrentCamera
-local LP               = Players.LocalPlayer
-
--- Detecção de plataforma
-local isMobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
-
--- Wrapper seguro para funções
-local function safe(fn, ...)
-    local ok, err = pcall(fn, ...)
-    if not ok then
-        -- silencia erros internos
-    end
-end
-
--- ══════════════════════════════════════════════════════
---               TELA DE KEY
--- ══════════════════════════════════════════════════════
-local keyValidated = false
-
--- Monta a GUI de key
-local KeyGui = Instance.new("ScreenGui")
-KeyGui.Name = "NF_Key_" .. tostring(math.random(100000, 999999))
-KeyGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-KeyGui.ResetOnSpawn = false
-KeyGui.DisplayOrder = 999
-
--- Tenta parente privilegiado
-local guiParented = false
-pcall(function()
-    KeyGui.Parent = game:GetService("CoreGui")
-    guiParented = true
-end)
-if not guiParented then
-    local pg = LP:FindFirstChildOfClass("PlayerGui") or LP:WaitForChild("PlayerGui", 5)
-    if pg then KeyGui.Parent = pg end
-end
-
--- Proteção syn
-pcall(function() if syn and syn.protect_gui then syn.protect_gui(KeyGui) end end)
-
--- Fundo escuro
-local BG = Instance.new("Frame")
-BG.Name = "BG"
-BG.Size = UDim2.new(1, 0, 1, 0)
-BG.Position = UDim2.new(0, 0, 0, 0)
-BG.BackgroundColor3 = Color3.fromRGB(3, 2, 10)
-BG.BackgroundTransparency = 0.15
-BG.BorderSizePixel = 0
-BG.ZIndex = 10
-BG.Parent = KeyGui
-
--- Card central
-local Card = Instance.new("Frame")
-Card.Size = UDim2.new(0, 440, 0, 320)
-Card.Position = UDim2.new(0.5, -220, 0.5, -160)
-Card.BackgroundColor3 = Color3.fromRGB(8, 4, 25)
-Card.BorderSizePixel = 0
-Card.ZIndex = 11
-Card.Parent = BG
-Instance.new("UICorner", Card).CornerRadius = UDim.new(0, 14)
-local CardStroke = Instance.new("UIStroke", Card)
-CardStroke.Color = Color3.fromRGB(140, 0, 255)
-CardStroke.Thickness = 2
-CardStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-
--- Título animado
-local Logo = Instance.new("TextLabel")
-Logo.Size = UDim2.new(1, -20, 0, 55)
-Logo.Position = UDim2.new(0, 10, 0, 12)
-Logo.BackgroundTransparency = 1
-Logo.Text = "◈  NIGHTFALL SCRIPT  ◈"
-Logo.TextColor3 = Color3.fromRGB(140, 0, 255)
-Logo.TextScaled = true
-Logo.Font = Enum.Font.GothamBold
-Logo.ZIndex = 12
-Logo.Parent = Card
-
--- Subtítulo
-local Sub = Instance.new("TextLabel")
-Sub.Size = UDim2.new(1, -30, 0, 22)
-Sub.Position = UDim2.new(0, 15, 0, 70)
-Sub.BackgroundTransparency = 1
-Sub.Text = "Insira sua key de acesso"
-Sub.TextColor3 = Color3.fromRGB(180, 120, 255)
-Sub.TextScaled = true
-Sub.Font = Enum.Font.Gotham
-Sub.ZIndex = 12
-Sub.Parent = Card
-
--- Campo de key
-local KeyBox = Instance.new("TextBox")
-KeyBox.Size = UDim2.new(1, -30, 0, 48)
-KeyBox.Position = UDim2.new(0, 15, 0, 100)
-KeyBox.BackgroundColor3 = Color3.fromRGB(15, 8, 40)
-KeyBox.TextColor3 = Color3.fromRGB(220, 60, 160)
-KeyBox.PlaceholderText = "NF-XXXXXXXX-XXXXXXXX-XXXXXXXX"
-KeyBox.PlaceholderColor3 = Color3.fromRGB(100, 60, 120)
-KeyBox.Text = ""
-KeyBox.TextScaled = true
-KeyBox.Font = Enum.Font.Code
-KeyBox.ClearTextOnFocus = false
-KeyBox.ZIndex = 12
-KeyBox.Parent = Card
-Instance.new("UICorner", KeyBox).CornerRadius = UDim.new(0, 8)
-local BoxStroke = Instance.new("UIStroke", KeyBox)
-BoxStroke.Color = Color3.fromRGB(100, 0, 200)
-BoxStroke.Thickness = 1.5
-
--- Status
-local StatusLbl = Instance.new("TextLabel")
-StatusLbl.Size = UDim2.new(1, -30, 0, 28)
-StatusLbl.Position = UDim2.new(0, 15, 0, 158)
-StatusLbl.BackgroundTransparency = 1
-StatusLbl.Text = ""
-StatusLbl.TextColor3 = Color3.fromRGB(255, 80, 80)
-StatusLbl.TextScaled = true
-StatusLbl.Font = Enum.Font.Gotham
-StatusLbl.ZIndex = 12
-StatusLbl.Parent = Card
-
--- Botão validar
-local BtnValidate = Instance.new("TextButton")
-BtnValidate.Size = UDim2.new(1, -30, 0, 52)
-BtnValidate.Position = UDim2.new(0, 15, 0, 194)
-BtnValidate.BackgroundColor3 = Color3.fromRGB(140, 0, 255)
-BtnValidate.TextColor3 = Color3.fromRGB(255, 255, 255)
-BtnValidate.Text = "▶  VALIDAR E ENTRAR"
-BtnValidate.TextScaled = true
-BtnValidate.Font = Enum.Font.GothamBold
-BtnValidate.ZIndex = 12
-BtnValidate.AutoButtonColor = true
-BtnValidate.Parent = Card
-Instance.new("UICorner", BtnValidate).CornerRadius = UDim.new(0, 8)
-
--- Link do site
-local SiteLbl = Instance.new("TextLabel")
-SiteLbl.Size = UDim2.new(1, -30, 0, 24)
-SiteLbl.Position = UDim2.new(0, 15, 0, 254)
-SiteLbl.BackgroundTransparency = 1
-SiteLbl.Text = "🔑 Compre sua key em: " .. SERVER_URL
-SiteLbl.TextColor3 = Color3.fromRGB(140, 0, 255)
-SiteLbl.TextScaled = true
-SiteLbl.Font = Enum.Font.Gotham
-SiteLbl.ZIndex = 12
-SiteLbl.Parent = Card
-
--- Animação RGB no logo e borda
-local hueAnim = 0
-local animConn = RunService.Heartbeat:Connect(function()
-    hueAnim = (hueAnim + 0.005) % 1
-    local c = Color3.fromHSV(hueAnim, 1, 1)
-    Logo.TextColor3 = c
-    CardStroke.Color = c
-end)
-
--- Lógica de validação
-local function doValidate()
-    local k = KeyBox.Text:match("^%s*(.-)%s*$")
-    if not k or k == "" then
-        StatusLbl.Text = "⚠ Digite sua key primeiro"
-        StatusLbl.TextColor3 = Color3.fromRGB(255, 200, 0)
-        return
-    end
-    k = k:upper()
-    BtnValidate.Text = "⏳ Validando..."
-    BtnValidate.BackgroundColor3 = Color3.fromRGB(80, 20, 140)
-    StatusLbl.Text = ""
-
-    -- Tenta validar via HTTP do executor
-    local result = httpPost(SERVER_URL .. "/api/keys/validate", { key = k })
-
-    if result == nil then
-        -- Sem conexão com servidor: avisa mas permite continuar (modo offline)
-        StatusLbl.Text = "⚠ Sem conexão com servidor"
-        StatusLbl.TextColor3 = Color3.fromRGB(255, 165, 0)
-        task.wait(1.5)
-        -- Aceita a key localmente para não bloquear o usuário
-        keyValidated = true
-        BtnValidate.Text = "✓ ABRINDO NIGHTFALL..."
-        task.wait(1)
-        animConn:Disconnect()
-        KeyGui:Destroy()
-        return
-    end
-
-    if result.valid then
-        StatusLbl.Text = "✓ " .. tostring(result.message or "Key válida!")
-        StatusLbl.TextColor3 = Color3.fromRGB(60, 255, 120)
-        BtnValidate.Text = "✓ ABRINDO NIGHTFALL..."
-        keyValidated = true
-        task.wait(1.2)
-        animConn:Disconnect()
-        KeyGui:Destroy()
-    else
-        StatusLbl.Text = "✗ " .. tostring(result.message or "Key inválida")
-        StatusLbl.TextColor3 = Color3.fromRGB(255, 80, 80)
-        BtnValidate.Text = "▶  VALIDAR E ENTRAR"
-        BtnValidate.BackgroundColor3 = Color3.fromRGB(140, 0, 255)
-    end
-end
-
-BtnValidate.MouseButton1Click:Connect(doValidate)
-KeyBox.FocusLost:Connect(function(enter)
-    if enter then doValidate() end
-end)
-
--- Espera validação
-repeat task.wait(0.1) until keyValidated
-
--- ══════════════════════════════════════════════════════
---               CARREGA RAYFIELD UI
--- ══════════════════════════════════════════════════════
+-- Carrega Rayfield
 local Rayfield
-local ok, err = pcall(function()
-    Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
-end)
-if not ok or not Rayfield then
-    -- Fallback: tenta via executor
-    ok, err = pcall(function()
-        local src = httpGet("https://sirius.menu/rayfield")
-        if src then Rayfield = loadstring(src)() end
-    end)
+pcall(function() Rayfield=loadstring(game:HttpGet("https://sirius.menu/rayfield"))() end)
+if not Rayfield then
+    pcall(function() Rayfield=loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Rayfield/main/source"))() end)
 end
 if not Rayfield then
-    -- Continua sem Rayfield (modo sem UI)
-    warn("[NightFall] Não foi possível carregar Rayfield: " .. tostring(err))
-    return
+    Rayfield={CreateWindow=function(_,c) local w={}
+        function w:CreateTab() return{CreateSection=function()end,CreateToggle=function(_,x)if x.Callback then x.Callback(x.CurrentValue or false)end end,CreateSlider=function(_,x)if x.Callback then x.Callback(x.CurrentValue or 0)end end,CreateDropdown=function(_,x)if x.Callback then x.Callback({x.CurrentOption and x.CurrentOption[1] or x.Options[1]})end end,CreateColorPicker=function(_,x)if x.Callback then x.Callback(x.Color or Color3.new(1,0,0))end end,CreateButton=function()end,CreateLabel=function()end} end
+        function w:Notify(d) print("[CORINGA]",d.Title,d.Content) end
+        return w
+    end}
 end
 
--- ══════════════════════════════════════════════════════
---               CONFIGURAÇÃO GLOBAL
--- ══════════════════════════════════════════════════════
-local CFG = {
-    -- ESP
-    ESPAura = false, ESPAuraSize = 3,
-    ESPBox = false, ESPBoxThick = 1,
-    ESPName = false, ESPDist = false,
-    ESPHead = false,
-    ESPLine = false, ESPLineThick = 2,
-    -- Aimbot
-    Aimbot = false, AimLock = false,
-    AimKill = false, SilentAim = false,
-    AimFOV = 150, AimSmooth = 0.12,
-    ShowFOV = true,
-    -- Extras
-    SpinBot = false, SpinSpeed = 5,
-    Speed = false, SpeedVal = 16,
-    Fly = false,
-    InfJump = false, AutoJump = false,
-}
+local Window=Rayfield:CreateWindow({Name="CORINGA HUB",LoadingTitle="CORINGA HUB",LoadingSubtitle="by Joao",Theme="Default",DisableRayfieldPrompts=false,DisableBuildWarnings=true,ConfigurationSaving={Enabled=false},KeySystem=false})
 
--- ══════════════════════════════════════════════════════
---               HELPERS
--- ══════════════════════════════════════════════════════
-local function getChar(p) return p and p.Character end
-local function getRoot(p)
-    local c = getChar(p)
-    return c and c:FindFirstChild("HumanoidRootPart")
-end
-local function getHead(p)
-    local c = getChar(p)
-    return c and c:FindFirstChild("Head")
-end
-local function getHum(p)
-    local c = getChar(p)
-    return c and c:FindFirstChildOfClass("Humanoid")
-end
-local function isAlive(p)
-    local h = getHum(p)
-    return h and h.Health > 0
-end
-local function getEnemies()
-    local t = {}
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LP and isAlive(p) then t[#t+1] = p end
+-- HOME TAB
+local HomeTab=Window:CreateTab("Home",4483362458)
+HomeTab:CreateSection("Bem-vindo")
+HomeTab:CreateLabel("CORINGA HUB - by Joao")
+HomeTab:CreateLabel("Biblioteca: Rayfield UI")
+HomeTab:CreateLabel("Toggle UI: RightShift")
+HomeTab:CreateLabel("Compat.: Delta Mobile | Synapse | Fluxus | Solara")
+HomeTab:CreateSection("Status")
+HomeTab:CreateLabel("Anti-Kick: ATIVO por padrao")
+HomeTab:CreateLabel("Anti-Ban:  ATIVO por padrao")
+
+-- COMBAT TAB
+local CombatTab=Window:CreateTab("Combat",4483362458)
+CombatTab:CreateSection("AimBot")
+CombatTab:CreateToggle({Name="AimBot (SilentAim+AimLock)",CurrentValue=false,Flag="AimBot",Callback=function(v) G.AimBot=v;G.SilentAim=v;G.AimLock=v end})
+CombatTab:CreateSlider({Name="Smoothness",Range={1,10},Increment=1,CurrentValue=3,Flag="AimSmooth",Callback=function(v) G.AimSmooth=v/10 end})
+CombatTab:CreateSlider({Name="FOV Aiming",Range={10,360},Increment=1,CurrentValue=120,Flag="AimFOV",Suffix="°",Callback=function(v) G.AimFOV=v;G.FOVRadius=v end})
+CombatTab:CreateDropdown({Name="Alvo (Hitbox)",Options={"Head","Torso","Random"},CurrentOption={"Head"},MultipleOptions=false,Flag="AimPart",Callback=function(opts) G.AimPart=opts[1] or opts end})
+CombatTab:CreateToggle({Name="Prediction",CurrentValue=false,Flag="Prediction",Callback=function(v) G.Prediction=v end})
+CombatTab:CreateSection("FOV Circle")
+CombatTab:CreateToggle({Name="AimFOV Circle",CurrentValue=false,Flag="FOVCircle",Callback=function(v) G.FOVCircle=v end})
+CombatTab:CreateSlider({Name="FOV Circle Size",Range={10,500},Increment=1,CurrentValue=120,Flag="FOVRadius",Suffix="px",Callback=function(v) G.FOVRadius=v end})
+CombatTab:CreateColorPicker({Name="Cor do FOV Circle",Color=Color3.fromRGB(255,0,0),Flag="FOVColor",Callback=function(v) G.FOVColor=v end})
+CombatTab:CreateSection("Extras")
+CombatTab:CreateToggle({Name="AimKill",CurrentValue=false,Flag="AimKill",Callback=function(v) G.AimKill=v end})
+CombatTab:CreateToggle({Name="TriggerBot",CurrentValue=false,Flag="TriggerBot",Callback=function(v) G.TriggerBot=v end})
+CombatTab:CreateToggle({Name="Kill Aura",CurrentValue=false,Flag="KillAura",Callback=function(v) G.KillAura=v end})
+CombatTab:CreateSlider({Name="Kill Aura Raio",Range={5,100},Increment=1,CurrentValue=20,Flag="KillAuraRad",Suffix=" studs",Callback=function(v) G.KillAuraRad=v end})
+
+-- VISUALS TAB
+local VisualsTab=Window:CreateTab("Visuals",4483362458)
+VisualsTab:CreateSection("ESP")
+VisualsTab:CreateToggle({Name="Box ESP",CurrentValue=false,Flag="BoxESP",Callback=function(v) G.BoxESP=v end})
+VisualsTab:CreateDropdown({Name="Tipo de Box",Options={"2D","3D"},CurrentOption={"2D"},MultipleOptions=false,Flag="BoxType",Callback=function(opts) G.BoxType=opts[1] or opts end})
+VisualsTab:CreateToggle({Name="Name ESP",CurrentValue=false,Flag="NameESP",Callback=function(v) G.NameESP=v end})
+VisualsTab:CreateToggle({Name="Health Bar",CurrentValue=false,Flag="HealthBar",Callback=function(v) G.HealthBar=v end})
+VisualsTab:CreateToggle({Name="Health Text",CurrentValue=false,Flag="HealthText",Callback=function(v) G.HealthText=v end})
+VisualsTab:CreateToggle({Name="Distance ESP",CurrentValue=false,Flag="DistESP",Callback=function(v) G.DistESP=v end})
+VisualsTab:CreateToggle({Name="Tracers",CurrentValue=false,Flag="Tracers",Callback=function(v) G.Tracers=v end})
+VisualsTab:CreateToggle({Name="Head Dot",CurrentValue=false,Flag="HeadDot",Callback=function(v) G.HeadDot=v end})
+VisualsTab:CreateToggle({Name="Team Check (Enemy Only)",CurrentValue=false,Flag="TeamCheck",Callback=function(v) G.TeamCheck=v end})
+VisualsTab:CreateSection("Configuracoes ESP")
+VisualsTab:CreateSlider({Name="Espessura",Range={1,5},Increment=1,CurrentValue=1,Flag="ESPThick",Callback=function(v) G.ESPThick=v end})
+VisualsTab:CreateSlider({Name="Tamanho Texto",Range={8,24},Increment=1,CurrentValue=13,Flag="ESPTextSize",Callback=function(v) G.ESPTextSize=v end})
+VisualsTab:CreateColorPicker({Name="Cor Inimigo",Color=Color3.fromRGB(255,0,0),Flag="ESPEnemy",Callback=function(v) G.ESPEnemyColor=v end})
+VisualsTab:CreateColorPicker({Name="Cor Time",Color=Color3.fromRGB(0,255,0),Flag="ESPTeam",Callback=function(v) G.ESPTeamColor=v end})
+
+-- MOVEMENT TAB
+local MovementTab=Window:CreateTab("Movement",4483362458)
+MovementTab:CreateSection("SpinBot")
+MovementTab:CreateToggle({Name="SpinBot",CurrentValue=false,Flag="SpinBot",Callback=function(v) G.SpinBot=v end})
+MovementTab:CreateSlider({Name="SpinBot Velocidade",Range={0,500},Increment=1,CurrentValue=10,Flag="SpinSpeed",Suffix=" vel",Callback=function(v) G.SpinSpeed=v end})
+MovementTab:CreateSection("Fly")
+MovementTab:CreateToggle({Name="Fly",CurrentValue=false,Flag="Fly",Callback=function(v)
+    G.Fly=v
+    local c=LocalPlayer.Character; if not c then return end
+    local h=c:FindFirstChild("HumanoidRootPart"); if not h then return end
+    if v then
+        local g=Instance.new("BodyGyro",h); g.Name="FlyBodyGyro"; g.MaxTorque=Vector3.new(1e9,1e9,1e9); g.P=1e4
+        local bv=Instance.new("BodyVelocity",h); bv.Name="FlyBodyVelocity"; bv.Velocity=Vector3.zero; bv.MaxForce=Vector3.new(1e9,1e9,1e9)
+    else
+        local bg=h:FindFirstChild("FlyBodyGyro"); if bg then bg:Destroy() end
+        local bv2=h:FindFirstChild("FlyBodyVelocity"); if bv2 then bv2:Destroy() end
     end
-    return t
-end
-local function w2v(pos)
-    local v, onScreen = Camera:WorldToViewportPoint(pos)
-    return Vector2.new(v.X, v.Y), v.Z > 0 and onScreen
-end
-local function dist(p)
-    local a, b = getRoot(LP), getRoot(p)
-    return (a and b) and (a.Position - b.Position).Magnitude or math.huge
-end
-local function closestEnemy()
-    local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-    local best, bestD = nil, math.huge
-    for _, p in ipairs(getEnemies()) do
-        local r = getRoot(p)
-        if r then
-            local sp, onS = w2v(r.Position)
-            if onS then
-                local d = (sp - center).Magnitude
-                if d < CFG.AimFOV and d < bestD then
-                    bestD = d
-                    best = p
-                end
-            end
+end})
+MovementTab:CreateSlider({Name="Fly Velocidade",Range={1,500},Increment=1,CurrentValue=50,Flag="FlySpeed",Suffix=" vel",Callback=function(v) G.FlySpeed=v end})
+MovementTab:CreateSection("Speed / Jump")
+MovementTab:CreateToggle({Name="Speed Hack",CurrentValue=false,Flag="SpeedHack",Callback=function(v) G.SpeedHack=v end})
+MovementTab:CreateSlider({Name="Speed Multiplicador",Range={1,100},Increment=1,CurrentValue=1,Flag="SpeedMult",Suffix="x",Callback=function(v)
+    G.SpeedMult=v
+    if G.SpeedHack then local c=LocalPlayer.Character; if c then local h=c:FindFirstChildOfClass("Humanoid"); if h then h.WalkSpeed=16*v end end end
+end})
+MovementTab:CreateToggle({Name="Infinite Jump",CurrentValue=false,Flag="InfJump",Callback=function(v) G.InfJump=v end})
+MovementTab:CreateToggle({Name="NoClip",CurrentValue=false,Flag="NoClip",Callback=function(v) G.NoClip=v end})
+MovementTab:CreateSlider({Name="WalkSpeed",Range={0,250},Increment=1,CurrentValue=16,Flag="WalkSpeed",Suffix=" ws",Callback=function(v)
+    G.WalkSpeed=v; local c=LocalPlayer.Character; if c then local h=c:FindFirstChildOfClass("Humanoid"); if h then h.WalkSpeed=v end end
+end})
+MovementTab:CreateSlider({Name="JumpPower",Range={0,500},Increment=1,CurrentValue=50,Flag="JumpPower",Suffix=" jp",Callback=function(v)
+    G.JumpPower=v; local c=LocalPlayer.Character; if c then local h=c:FindFirstChildOfClass("Humanoid"); if h then h.JumpPower=v end end
+end})
+
+-- MISC TAB
+local MiscTab=Window:CreateTab("Misc",4483362458)
+MiscTab:CreateSection("Protecao")
+MiscTab:CreateToggle({Name="Anti-Kick",CurrentValue=true,Flag="AntiKick",Callback=function(v)
+    G.AntiKick=v
+    Window:Notify({Title="CORINGA HUB",Content=v and "Anti-Kick ATIVADO!" or "Anti-Kick desativado.",Duration=3})
+end})
+MiscTab:CreateToggle({Name="Anti-Ban",CurrentValue=true,Flag="AntiBan",Callback=function(v)
+    G.AntiBan=v
+    Window:Notify({Title="CORINGA HUB",Content=v and "Anti-Ban ATIVADO!" or "Anti-Ban desativado.",Duration=3})
+end})
+MiscTab:CreateToggle({Name="God Mode",CurrentValue=false,Flag="GodMode",Callback=function(v)
+    G.GodMode=v
+    local c=LocalPlayer.Character; if c then local h=c:FindFirstChildOfClass("Humanoid"); if h then h.MaxHealth=v and math.huge or 100; h.Health=v and math.huge or 100 end end
+end})
+MiscTab:CreateToggle({Name="Anti-AFK",CurrentValue=false,Flag="AntiAFK",Callback=function(v)
+    G.AntiAFK=v
+    if v then pcall(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end) end
+end})
+MiscTab:CreateSection("Utilitarios")
+MiscTab:CreateButton({Name="Kill All (Jogadores)",Callback=function()
+    for _,p in ipairs(Players:GetPlayers()) do
+        if p~=LocalPlayer and p.Character then
+            local h=p.Character:FindFirstChildOfClass("Humanoid"); if h then h.Health=0 end
         end
+    end
+end})
+MiscTab:CreateButton({Name="Rejoin",Callback=function()
+    pcall(function() TeleportService:Teleport(game.PlaceId,LocalPlayer) end)
+end})
+MiscTab:CreateSection("Ambiente")
+MiscTab:CreateToggle({Name="Remove Fog",CurrentValue=false,Flag="RemoveFog",Callback=function(v)
+    G.RemoveFog=v
+    if v then Lighting.FogEnd=1e8; Lighting.FogStart=0 else Lighting.FogEnd=100000; Lighting.FogStart=0 end
+end})
+MiscTab:CreateToggle({Name="Fullbright",CurrentValue=false,Flag="Fullbright",Callback=function(v)
+    G.Fullbright=v
+    if v then Lighting.Brightness=2; Lighting.GlobalShadows=false; Lighting.Ambient=Color3.fromRGB(178,178,178)
+    else Lighting.Brightness=1; Lighting.GlobalShadows=true; Lighting.Ambient=Color3.fromRGB(70,70,70) end
+end})
+MiscTab:CreateToggle({Name="FPS Counter",CurrentValue=false,Flag="FPSCounter",Callback=function(v) G.FPSCounter=v end})
+
+-- SETTINGS TAB
+local SettingsTab=Window:CreateTab("Settings",4483362458)
+SettingsTab:CreateSection("Sistema")
+SettingsTab:CreateButton({Name="Resetar Configuracoes",Callback=function()
+    G.AimBot=false;G.SilentAim=false;G.AimLock=false;G.AimSmooth=0.3;G.AimFOV=120;G.AimPart="Head"
+    G.FOVCircle=false;G.AimKill=false;G.TriggerBot=false;G.KillAura=false;G.KillAuraRad=20
+    G.BoxESP=false;G.NameESP=false;G.HealthBar=false;G.DistESP=false;G.Tracers=false;G.HeadDot=false
+    G.SpinBot=false;G.Fly=false;G.SpeedHack=false;G.InfJump=false;G.NoClip=false
+    G.GodMode=false;G.AntiAFK=false;G.AntiKick=true;G.AntiBan=true
+    G.FakeLag=false;G.RemoveFog=false;G.Fullbright=false;G.FPSCounter=false
+    Window:Notify({Title="CORINGA HUB",Content="Configuracoes resetadas!",Duration=3})
+end})
+SettingsTab:CreateSection("Creditos")
+SettingsTab:CreateLabel("CORINGA HUB - Feito com Rayfield UI")
+SettingsTab:CreateLabel("by Joao | Mobile & PC")
+
+-- DRAWING API
+local drawingOk=(typeof(Drawing)=="table" or typeof(Drawing)=="userdata")
+local function ND(t,p) if not drawingOk then return{Remove=function()end} end; local ok,d=pcall(function() return Drawing.new(t) end); if not ok then return{Remove=function()end} end; for k,v in pairs(p) do pcall(function() d[k]=v end) end; return d end
+local function W2V(pos) local vp,on=Camera:WorldToViewportPoint(pos); return Vector2.new(vp.X,vp.Y),vp.Z>0 and on end
+
+-- ESP Objects
+local ESPObjects={}
+local function IsEnemy(p) return not G.TeamCheck or p.Team~=LocalPlayer.Team end
+local function ESPColor(p) return IsEnemy(p) and G.ESPEnemyColor or G.ESPTeamColor end
+local function BBox(char)
+    local r=char:FindFirstChild("HumanoidRootPart"); if not r then return nil end
+    local pos,on=W2V(r.Position); if not on then return nil end
+    local ty=W2V(r.Position+Vector3.new(0,3,0)); local by=W2V(r.Position-Vector3.new(0,3,0))
+    local h=math.abs(ty.Y-by.Y); local w=h*0.6
+    return{X=pos.X-w/2,Y=ty.Y,Width=w,Height=h,Center=pos}
+end
+local function MkESP(p)
+    local o={}
+    o.Box=ND("Square",{Visible=false,Filled=false,Color=Color3.fromRGB(255,0,0),Thickness=1,Transparency=1})
+    o.Name=ND("Text",{Visible=false,Center=true,Outline=true,Size=13,Font=2,Color=Color3.fromRGB(255,255,255)})
+    o.Dist=ND("Text",{Visible=false,Center=true,Outline=true,Size=11,Font=2,Color=Color3.fromRGB(255,255,255)})
+    o.HealthBG=ND("Square",{Visible=false,Filled=true,Color=Color3.fromRGB(0,0,0),Transparency=0.6})
+    o.HealthFG=ND("Square",{Visible=false,Filled=true,Color=Color3.fromRGB(0,255,0),Transparency=1})
+    o.Tracer=ND("Line",{Visible=false,Thickness=1,Color=Color3.fromRGB(255,0,0),Transparency=1})
+    o.HeadDot=ND("Circle",{Visible=false,Filled=false,Thickness=1,Color=Color3.fromRGB(255,0,0),Transparency=1,Radius=4})
+    ESPObjects[p]=o
+end
+local function RmESP(p) if ESPObjects[p] then for _,d in pairs(ESPObjects[p]) do pcall(function() d:Remove() end) end; ESPObjects[p]=nil end end
+for _,p in ipairs(Players:GetPlayers()) do if p~=LocalPlayer then MkESP(p) end end
+Players.PlayerAdded:Connect(MkESP)
+Players.PlayerRemoving:Connect(RmESP)
+
+local FOVDraw=ND("Circle",{Visible=false,Filled=false,Thickness=1,Color=Color3.fromRGB(255,0,0),Transparency=1,NumSides=64,Radius=120})
+local FPSDraw=ND("Text",{Visible=false,Center=false,Outline=true,Size=14,Font=2,Color=Color3.fromRGB(0,255,0),Position=Vector2.new(10,10),Text="FPS: 0"})
+
+local function GetTarget()
+    local best,bd=nil,math.huge
+    local vc=Vector2.new(Camera.ViewportSize.X/2,Camera.ViewportSize.Y/2)
+    for _,p in ipairs(Players:GetPlayers()) do
+        if p==LocalPlayer or not IsEnemy(p) then continue end
+        local c=p.Character; if not c then continue end
+        local hm=c:FindFirstChildOfClass("Humanoid"); if not hm or hm.Health<=0 then continue end
+        local pn=G.AimPart=="Random" and "HumanoidRootPart" or G.AimPart
+        local pt=c:FindFirstChild(pn) or c:FindFirstChild("HumanoidRootPart"); if not pt then continue end
+        local p2,on=W2V(pt.Position); if not on then continue end
+        local d=(p2-vc).Magnitude
+        if d<G.AimFOV and d<bd then bd=d; best=p end
     end
     return best
 end
 
--- ══════════════════════════════════════════════════════
---               ESP DRAWINGS
--- ══════════════════════════════════════════════════════
-local ESP = {}
-
-local function removeESP(p)
-    if ESP[p] then
-        for _, o in pairs(ESP[p]) do pcall(function() o:Remove() end) end
-        ESP[p] = nil
-    end
-end
-
-local function makeESP(p)
-    removeESP(p)
-    local function newDraw(type, props)
-        local d = Drawing.new(type)
-        for k,v in pairs(props) do d[k] = v end
-        return d
-    end
-    ESP[p] = {
-        Aura  = newDraw("Circle",  {Visible=false, Filled=false, Thickness=3, ZIndex=5}),
-        BoxT  = newDraw("Line",    {Visible=false, Thickness=1, ZIndex=5}),
-        BoxB  = newDraw("Line",    {Visible=false, Thickness=1, ZIndex=5}),
-        BoxL  = newDraw("Line",    {Visible=false, Thickness=1, ZIndex=5}),
-        BoxR  = newDraw("Line",    {Visible=false, Thickness=1, ZIndex=5}),
-        Name  = newDraw("Text",    {Visible=false, Size=14, Center=true, Outline=true, Font=Drawing.Fonts.UI, ZIndex=5}),
-        Dist  = newDraw("Text",    {Visible=false, Size=12, Center=true, Outline=true, Font=Drawing.Fonts.UI, ZIndex=5}),
-        Head  = newDraw("Circle",  {Visible=false, Filled=false, Thickness=1.5, ZIndex=5}),
-        Line  = newDraw("Line",    {Visible=false, Thickness=2, ZIndex=4}),
-    }
-end
-
-for _, p in ipairs(Players:GetPlayers()) do
-    if p ~= LP then makeESP(p) end
-end
-Players.PlayerAdded:Connect(function(p) task.wait(0.5); makeESP(p) end)
-Players.PlayerRemoving:Connect(removeESP)
-
-local rgbH = 0
-local function tickESP()
-    rgbH = (rgbH + 0.007) % 1
-    local col = Color3.fromHSV(rgbH, 1, 1)
-    local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p == LP then continue end
-        local obj = ESP[p]; if not obj then continue end
-        local char = getChar(p)
-        local root = getRoot(p)
-        local hum  = getHum(p)
-        local alive = char and root and hum and hum.Health > 0
-
-        -- AURA RGB (círculo brilhante visível através de paredes)
-        if CFG.ESPAura and alive then
-            local sp, onS = w2v(root.Position)
-            local d = dist(p)
-            obj.Aura.Visible  = onS
-            obj.Aura.Position = sp
-            obj.Aura.Radius   = math.clamp(1800/d, 18, 220)
-            obj.Aura.Color    = col
-            obj.Aura.Thickness = CFG.ESPAuraSize
-        else obj.Aura.Visible = false end
-
-        -- BOX RGB (8 pontos projetados em 2D)
-        if CFG.ESPBox and alive then
-            local cf = root.CFrame
-            local sx, sy, sz = 2.4, 5.8, 1
-            local corners = {
-                cf * Vector3.new(-sx/2,  sy/2, -sz/2), cf * Vector3.new( sx/2,  sy/2, -sz/2),
-                cf * Vector3.new(-sx/2, -sy/2, -sz/2), cf * Vector3.new( sx/2, -sy/2, -sz/2),
-                cf * Vector3.new(-sx/2,  sy/2,  sz/2), cf * Vector3.new( sx/2,  sy/2,  sz/2),
-                cf * Vector3.new(-sx/2, -sy/2,  sz/2), cf * Vector3.new( sx/2, -sy/2,  sz/2),
-            }
-            local minX, minY, maxX, maxY = math.huge, math.huge, -math.huge, -math.huge
-            for _, corner in ipairs(corners) do
-                local sv = w2v(corner)
-                if sv.X < minX then minX = sv.X end; if sv.Y < minY then minY = sv.Y end
-                if sv.X > maxX then maxX = sv.X end; if sv.Y > maxY then maxY = sv.Y end
+local frames,fps,lastT=0,0,0
+RunService.RenderStepped:Connect(function()
+    frames=frames+1; if tick()-lastT>=1 then fps=frames; frames=0; lastT=tick() end
+    pcall(function() FPSDraw.Visible=G.FPSCounter; if G.FPSCounter then FPSDraw.Text="FPS: "..fps end end)
+    pcall(function()
+        FOVDraw.Visible=G.FOVCircle
+        if G.FOVCircle then FOVDraw.Radius=G.FOVRadius; FOVDraw.Color=G.FOVColor; FOVDraw.Position=Vector2.new(Camera.ViewportSize.X/2,Camera.ViewportSize.Y/2) end
+    end)
+    local tgt=GetTarget()
+    if G.AimBot and G.AimLock and tgt and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+        local c=tgt.Character; if c then
+            local pn=G.AimPart=="Random" and "HumanoidRootPart" or G.AimPart
+            local pt=c:FindFirstChild(pn) or c:FindFirstChild("HumanoidRootPart")
+            if pt then
+                local pred=G.Prediction and ((pt.AssemblyLinearVelocity or Vector3.zero)*0.1) or Vector3.zero
+                Camera.CFrame=Camera.CFrame:Lerp(CFrame.lookAt(Camera.CFrame.Position,pt.Position+pred),G.AimSmooth)
             end
-            local function setLine(l, fx, fy, tx, ty)
-                l.From = Vector2.new(fx, fy); l.To = Vector2.new(tx, ty)
-                l.Color = col; l.Thickness = CFG.ESPBoxThick; l.Visible = true
-            end
-            setLine(obj.BoxT, minX, minY, maxX, minY)
-            setLine(obj.BoxB, minX, maxY, maxX, maxY)
-            setLine(obj.BoxL, minX, minY, minX, maxY)
-            setLine(obj.BoxR, maxX, minY, maxX, maxY)
-        else
-            obj.BoxT.Visible=false; obj.BoxB.Visible=false
-            obj.BoxL.Visible=false; obj.BoxR.Visible=false
         end
-
-        -- NOME
-        if CFG.ESPName and alive then
-            local sp, onS = w2v(root.Position + Vector3.new(0, 4, 0))
-            obj.Name.Visible = onS; obj.Name.Position = sp
-            obj.Name.Text = p.DisplayName; obj.Name.Color = col
-        else obj.Name.Visible = false end
-
-        -- DISTÂNCIA
-        if CFG.ESPDist and alive then
-            local sp, onS = w2v(root.Position - Vector3.new(0, 3.5, 0))
-            obj.Dist.Visible = onS; obj.Dist.Position = sp
-            obj.Dist.Text = math.floor(dist(p)) .. "m"; obj.Dist.Color = col
-        else obj.Dist.Visible = false end
-
-        -- CABEÇA
-        if CFG.ESPHead and alive then
-            local head = getHead(p)
-            if head then
-                local sp, onS = w2v(head.Position)
-                obj.Head.Visible = onS; obj.Head.Position = sp
-                obj.Head.Radius = 14; obj.Head.Color = col
-            end
-        else obj.Head.Visible = false end
-
-        -- TRACER (linha do centro da tela ao inimigo)
-        if CFG.ESPLine and alive then
-            local sp, onS = w2v(root.Position)
-            obj.Line.Visible = onS; obj.Line.From = center; obj.Line.To = sp
-            obj.Line.Color = col; obj.Line.Thickness = CFG.ESPLineThick
-        else obj.Line.Visible = false end
     end
-end
-
--- ══════════════════════════════════════════════════════
---               CÍRCULO DE FOV
--- ══════════════════════════════════════════════════════
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Filled = false
-FOVCircle.Color = Color3.fromRGB(255, 255, 255)
-FOVCircle.Thickness = 1.2
-FOVCircle.Transparency = 0.5
-FOVCircle.Visible = false
-
--- ══════════════════════════════════════════════════════
---               AIMBOT + SILENT AIM
--- ══════════════════════════════════════════════════════
-local restoreCF = nil
-local silentFrame = false
-
-local function tickAimbot()
-    local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-    FOVCircle.Position = center
-    FOVCircle.Radius   = CFG.AimFOV
-    FOVCircle.Visible  = CFG.ShowFOV
-
-    local target = closestEnemy()
-    if not target then return end
-    local root = getRoot(target); if not root then return end
-    local head = getHead(target)
-
-    -- Previsão de movimento baseada na velocidade
-    local vel = pcall(function() return root.AssemblyLinearVelocity end) and root.AssemblyLinearVelocity or Vector3.zero
-    local predict = 0.07
-    local aimPos = head and (head.Position + vel * predict) or (root.Position + vel * predict)
-    local targetCF = CFrame.new(Camera.CFrame.Position, aimPos)
-
-    if CFG.AimKill then
-        Camera.CFrame = targetCF
-    elseif CFG.AimLock then
-        Camera.CFrame = Camera.CFrame:Lerp(targetCF, CFG.AimSmooth * 2)
-    elseif CFG.Aimbot then
-        if UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) or
-           (isMobile and UIS.TouchEnabled) then
-            Camera.CFrame = Camera.CFrame:Lerp
+    if G.AimKill and tgt then local c=tgt.Character; if c then local h=c:FindFirstChildOfClass("Humanoid"); if h then h.Health=0 end end end
+    if G.KillAura then
+        local lc=LocalPlayer.Character; local lrp=lc and lc:FindFirstChild("HumanoidRootPart")
+        if lrp then
+            for _,p in ipairs(Players:GetPlayers()) do
+                if p==LocalPlayer or not IsEnemy(p) then continue end
+                local c=p.Character; if not c then continue end
+                local rp=c:FindFirstChild("HumanoidRootPart"); local hm=c:FindFirstChildOfClass("Humanoid")
+                if rp and hm and (lrp.Position-rp.Position).Magnitude<=G.KillAuraRad then hm.Health=0 end
+            end
+        end
+    end
+    if G.SpinBot then local lc=LocalPlayer.Character; local h=lc and lc:FindFirstChild("HumanoidRootPart"); if h then h.CFrame=h.CFrame*CFrame.Angles(0,math.rad(G.SpinSpeed),0) end end
+    if G.Fly then
+        local lc=LocalPlayer.Character; local h=lc and lc:FindFirstChild("HumanoidRootPart")
+        local bv=h and h:FindFirstChild("FlyBodyVelocity"); local bg=h and h:FindFirstChild("FlyBodyGyro")
+        if bv and bg then
+            local d=Vector3.zero
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then d=d+Camera.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then d=d-Camera.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then d=d-Camera.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then d=d+Camera.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then d=d+Vector3.new(0,1,0) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then d=d-Vector3.new(0,1,0) end
+            bv.Velocity=d.Magnitude>0 and d.Unit*G.FlySpeed or Vector3.zero; bg.CFrame=Camera.CFrame
+        end
+    end
+    if G.NoClip then local lc=LocalPlayer.Character; if lc then for _,pt in ipairs(lc:GetDescendants()) do if pt:IsA("BasePart") then pt.CanCollide=false end end end end
+    -- ESP Render
+    local vc2=Vector2.new(Camera.ViewportSize.X/2,Camera.ViewportSize.Y/2)
+    for _,p in ipairs(Players:GetPlayers()) do
+        if p==LocalPlayer then continue end
+        local o=ESPObjects[p]; if not o then continue end
+        local c=p.Character; local hm=c and c:FindFirstChildOfClass("Humanoid"); local hrp=c and c:FindFirstChild("HumanoidRootPart")
+        local vis=c and hm and hrp and hm.Health>0 and IsEnemy(p)
+        local bb=vis and BBox(c) or nil; local col=ESPColor(p)
+        pcall(function() o.Box.Visible=G.BoxESP and bb~=nil; if G.BoxESP and bb then o.Box.Position=Vector2.new(bb.X,bb.Y);o.Box.Size=Vector2.new(bb.Width,bb.Height);o.Box.Color=col;o.Box.Thickness=G.ESPThick end end)
+        pcall(function() o.Name.Visible=G.NameESP and bb~=nil; if G.NameESP and bb then o.Name.Text=p.Name;o.Name.Size=G.ESPTextSize;o.Name.Position=Vector2.new(bb.Center.X,bb.Y-G.ESPTextSize-2);o.Name.Color=col end end)
+        pcall(function()
+            o.Dist.Visible=G.DistESP and bb~=nil
+            if G.DistESP 
